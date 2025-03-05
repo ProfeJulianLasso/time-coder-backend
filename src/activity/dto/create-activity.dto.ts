@@ -1,4 +1,4 @@
-import { IsNumber, IsString } from 'class-validator';
+import { IsNumber, IsOptional, IsString } from 'class-validator';
 
 export class CreateActivityDto {
   @IsString()
@@ -15,4 +15,8 @@ export class CreateActivityDto {
 
   @IsNumber()
   endTime: number;
+
+  @IsString()
+  @IsOptional()
+  gitBranch?: string;
 }

@@ -9,50 +9,44 @@ import { Activity } from './entities/activity.entity';
 export class ActivityService {
   constructor(
     @InjectRepository(Activity)
-    private readonly activitiesRepository: Repository<Activity>,
+    private readonly activityRepository: Repository<Activity>,
   ) {}
 
-  async create(
-    createActivityDto: CreateActivityDto,
-    user: User,
-  ): Promise<Activity> {
-    const activity = new Activity();
-    activity.project = createActivityDto.project;
-    activity.file = createActivityDto.file;
-    activity.language = createActivityDto.language;
-    activity.startTime = createActivityDto.startTime;
-    activity.endTime = createActivityDto.endTime;
-
-    // Calcular duración en horas
-    activity.duration =
-      (activity.endTime - activity.startTime) / (1000 * 60 * 60);
-
-    activity.user = user;
-
-    return this.activitiesRepository.save(activity);
-  }
-
-  async createMany(
-    createActivityDtos: CreateActivityDto[],
-    user: User,
-  ): Promise<void> {
-    const activities = createActivityDtos.map((dto) => {
-      const activity = new Activity();
-      activity.project = dto.project;
-      activity.file = dto.file;
-      activity.language = dto.language;
-      activity.startTime = dto.startTime;
-      activity.endTime = dto.endTime;
-      activity.duration = (dto.endTime - dto.startTime) / (1000 * 60 * 60);
-      activity.user = user;
-      return activity;
+  async create(createActivityDto: CreateActivityDto, user: User) {
+    const activity = this.activityRepository.create({
+      project: createActivityDto.project,
+      file: createActivityDto.file,
+      language: createActivityDto.language,
+      startTime: createActivityDto.startTime,
+      endTime: createActivityDto.endTime,
+      duration:
+        (createActivityDto.endTime - createActivityDto.startTime) / 1000,
+      user,
+      gitBranch: createActivityDto.gitBranch, // Aseguramos que se asigne el valor de gitBranch
     });
 
-    await this.activitiesRepository.save(activities);
+    return this.activityRepository.save(activity);
+  }
+
+  async createMany(createActivityDtos: CreateActivityDto[], user: User) {
+    const activities = createActivityDtos.map((dto) => {
+      return this.activityRepository.create({
+        project: dto.project,
+        file: dto.file,
+        language: dto.language,
+        startTime: dto.startTime,
+        endTime: dto.endTime,
+        duration: (dto.endTime - dto.startTime) / 1000,
+        user,
+        gitBranch: dto.gitBranch, // Aseguramos que se asigne el valor de gitBranch
+      });
+    });
+
+    return this.activityRepository.save(activities);
   }
 
   async findAll(userId: number): Promise<Activity[]> {
-    return this.activitiesRepository.find({
+    return this.activityRepository.find({
       where: { user: { id: userId } },
       order: { startTime: 'DESC' },
     });
@@ -66,7 +60,7 @@ export class ActivityService {
     const startTimestamp = startDate.getTime();
     const endTimestamp = endDate.getTime();
 
-    return this.activitiesRepository.find({
+    return this.activityRepository.find({
       where: {
         user: { id: userId },
         startTime: startTimestamp >= 0 ? startTimestamp : 0,

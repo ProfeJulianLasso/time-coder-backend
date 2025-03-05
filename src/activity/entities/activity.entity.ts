@@ -35,4 +35,7 @@ export class Activity {
 
   @ManyToOne(() => User, (user) => user.activities)
   user: User;
+
+  @Column({ nullable: true })
+  gitBranch: string;
 }
