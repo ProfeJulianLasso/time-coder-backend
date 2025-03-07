@@ -13,6 +13,21 @@ export class ActivityService {
   ) {}
 
   async create(createActivityDto: CreateActivityDto, user: User) {
+    const activity = this.crateActivity(createActivityDto, user);
+    return this.activityRepository.save(activity);
+  }
+
+  async createMany(createActivityDtos: CreateActivityDto[], user: User) {
+    const activities = createActivityDtos.map((dto) => {
+      return this.crateActivity(dto, user);
+    });
+    return this.activityRepository.save(activities);
+  }
+
+  private crateActivity(
+    createActivityDto: CreateActivityDto,
+    user: User,
+  ): Activity {
     const activity = this.activityRepository.create({
       project: createActivityDto.project,
       file: createActivityDto.file,
@@ -22,27 +37,12 @@ export class ActivityService {
       duration:
         (createActivityDto.endTime - createActivityDto.startTime) / 1000,
       user,
-      gitBranch: createActivityDto.gitBranch, // Aseguramos que se asigne el valor de gitBranch
+      branch: createActivityDto.branch,
+      machine: createActivityDto.machine,
+      platform: createActivityDto.platform,
+      debug: createActivityDto.debug,
     });
-
-    return this.activityRepository.save(activity);
-  }
-
-  async createMany(createActivityDtos: CreateActivityDto[], user: User) {
-    const activities = createActivityDtos.map((dto) => {
-      return this.activityRepository.create({
-        project: dto.project,
-        file: dto.file,
-        language: dto.language,
-        startTime: dto.startTime,
-        endTime: dto.endTime,
-        duration: (dto.endTime - dto.startTime) / 1000,
-        user,
-        gitBranch: dto.gitBranch, // Aseguramos que se asigne el valor de gitBranch
-      });
-    });
-
-    return this.activityRepository.save(activities);
+    return activity;
   }
 
   async findAll(userId: number): Promise<Activity[]> {

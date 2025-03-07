@@ -30,12 +30,21 @@ export class Activity {
   @Column('float')
   duration: number;
 
+  @Column()
+  branch: string;
+
+  @Column()
+  debug: boolean;
+
+  @Column()
+  machine: string;
+
+  @Column()
+  platform: string;
+
   @CreateDateColumn()
   createdAt: Date;
 
   @ManyToOne(() => User, (user) => user.activities)
   user: User;
-
-  @Column({ nullable: true })
-  gitBranch: string;
 }

@@ -1,13 +1,16 @@
-import { IsNumber, IsOptional, IsString } from 'class-validator';
+import { IsBoolean, IsNotEmpty, IsNumber, IsString } from 'class-validator';
 
 export class CreateActivityDto {
   @IsString()
+  @IsNotEmpty()
   project: string;
 
   @IsString()
+  @IsNotEmpty()
   file: string;
 
   @IsString()
+  @IsNotEmpty()
   language: string;
 
   @IsNumber()
@@ -17,6 +20,17 @@ export class CreateActivityDto {
   endTime: number;
 
   @IsString()
-  @IsOptional()
-  gitBranch?: string;
+  @IsNotEmpty()
+  branch: string;
+
+  @IsBoolean()
+  debug: boolean;
+
+  @IsString()
+  @IsNotEmpty()
+  machine: string;
+
+  @IsString()
+  @IsNotEmpty()
+  platform: string;
 }

@@ -92,7 +92,7 @@ export class ReportsService {
         projectBranchesMap.set(activity.project, new Map<string, number>());
       }
 
-      const branchName = activity.gitBranch || 'sin-rama';
+      const branchName = activity.branch || 'sin-rama';
       const branchMap = projectBranchesMap.get(activity.project);
       if (!branchMap) {
         return;
@@ -200,7 +200,7 @@ export class ReportsService {
         projectBranchesMap.set(activity.project, new Map<string, number>());
       }
 
-      const branchName = activity.gitBranch || 'sin-rama';
+      const branchName = activity.branch || 'sin-rama';
       const branchMap = projectBranchesMap.get(activity.project);
       if (!branchMap) {
         return;
