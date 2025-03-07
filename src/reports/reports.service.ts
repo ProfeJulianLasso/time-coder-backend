@@ -3,6 +3,10 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { LessThan, MoreThanOrEqual, Repository } from 'typeorm';
 import { Activity } from '../activity/entities/activity.entity';
 
+export interface DebugSummary {
+  hours: number;
+}
+
 export interface LanguageSummary {
   language: string;
   hours: number;
@@ -11,28 +15,39 @@ export interface LanguageSummary {
 export interface BranchSummary {
   branch: string;
   hours: number;
-}
-
-export interface ProjectSummary {
-  project: string;
-  hours: number;
-  branches: BranchSummary[];
+  debug: DebugSummary;
 }
 
 export interface DailySummary {
   totalHours: number;
   byLanguage: LanguageSummary[];
-  byProject: ProjectSummary[];
+  byPlatform: PlatformSummary[];
+}
+
+export interface PlatformSummary {
+  platform: string;
+  machine: string;
+  hours: number;
+  projects: ProjectSummary[];
+}
+
+export interface ProjectSummary {
+  project: string;
+  hours: number;
+  debug: DebugSummary;
+  branches: BranchSummary[];
+}
+
+export interface DailyHoursSummary {
+  date: string;
+  hours: number;
 }
 
 export interface WeeklySummary {
   totalHours: number;
-  dailyHours: {
-    date: string;
-    hours: number;
-  }[];
+  dailyHours: DailyHoursSummary[];
   byLanguage: LanguageSummary[];
-  byProject: ProjectSummary[];
+  byPlatform: PlatformSummary[];
 }
 
 @Injectable()
@@ -50,81 +65,152 @@ export class ReportsService {
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
-    const activities = await this.activitiesRepository.find({
-      where: {
-        user: { id: userId },
-        startTime: MoreThanOrEqual(this.convertToTimestamp(today)),
-        endTime: LessThan(this.convertToTimestamp(tomorrow)),
-      },
-    });
+    try {
+      const activities = await this.activitiesRepository.find({
+        where: {
+          user: { id: userId },
+          startTime: MoreThanOrEqual(this.convertToTimestamp(today)),
+          endTime: LessThan(this.convertToTimestamp(tomorrow)),
+        },
+      });
 
-    // Calcular horas totales
-    const totalHours = activities.reduce(
-      (sum, activity) => sum + activity.duration,
-      0,
-    );
+      // Calcular horas totales
+      const totalHours = activities.reduce(
+        (sum, activity) => sum + activity.duration,
+        0,
+      );
 
-    // Agrupar por lenguaje
-    const languageMap = new Map<string, number>();
-    activities.forEach((activity) => {
-      const currentHours = languageMap.get(activity.language) ?? 0;
-      languageMap.set(activity.language, currentHours + activity.duration);
-    });
+      // Agrupar por lenguaje
+      const languageMap = new Map<string, number>();
+      activities.forEach((activity) => {
+        const currentHours = languageMap.get(activity.language) ?? 0;
+        languageMap.set(activity.language, currentHours + activity.duration);
+      });
 
-    const byLanguage = Array.from(languageMap.entries()).map(
-      ([language, hours]) => ({
-        language,
-        hours,
-      }),
-    );
-
-    // Agrupar por proyecto
-    const projectMap = new Map<string, number>();
-    // Map para almacenar las ramas por proyecto
-    const projectBranchesMap = new Map<string, Map<string, number>>();
-
-    activities.forEach((activity) => {
-      const currentHours = projectMap.get(activity.project) ?? 0;
-      projectMap.set(activity.project, currentHours + activity.duration);
-
-      // Agregar información de rama git
-      if (!projectBranchesMap.has(activity.project)) {
-        projectBranchesMap.set(activity.project, new Map<string, number>());
-      }
-
-      const branchName = activity.branch || 'sin-rama';
-      const branchMap = projectBranchesMap.get(activity.project);
-      if (!branchMap) {
-        return;
-      }
-      const currentBranchHours = branchMap.get(branchName) ?? 0;
-      branchMap.set(branchName, currentBranchHours + activity.duration);
-    });
-
-    const byProject = Array.from(projectMap.entries()).map(
-      ([project, hours]) => {
-        const branchMap =
-          projectBranchesMap.get(project) || new Map<string, number>();
-        const branches = Array.from(branchMap.entries()).map(
-          ([branch, branchHours]) => ({
-            branch,
-            hours: branchHours,
-          }),
-        );
-
-        return {
-          project,
+      const byLanguage = Array.from(languageMap.entries()).map(
+        ([language, hours]) => ({
+          language,
           hours,
-          branches,
-        };
-      },
-    );
+        }),
+      );
 
-    return {
-      totalHours,
-      byLanguage,
-      byProject,
-    };
+      // Agrupar por plataforma, máquina y proyectos
+      const platformMap = new Map<
+        string,
+        {
+          machine: string;
+          hours: number;
+          projectsMap: Map<
+            string,
+            {
+              hours: number;
+              debugHours: number;
+              branchesMap: Map<
+                string,
+                {
+                  hours: number;
+                  debugHours: number;
+                }
+              >;
+            }
+          >;
+        }
+      >();
+
+      activities.forEach((activity) => {
+        const platform = activity.platform || 'desconocido';
+        const machine = activity.machine || 'desconocida';
+        const project = activity.project;
+        const branch = activity.branch || 'sin-rama';
+        const isDebug = activity.debug || false;
+        const duration = activity.duration;
+
+        // Inicializar plataforma si no existe
+        if (!platformMap.has(platform)) {
+          platformMap.set(platform, {
+            machine,
+            hours: 0,
+            projectsMap: new Map(),
+          });
+        }
+
+        const platformData = platformMap.get(platform)!;
+        platformData.hours += duration;
+
+        // Inicializar proyecto si no existe
+        if (!platformData.projectsMap.has(project)) {
+          platformData.projectsMap.set(project, {
+            hours: 0,
+            debugHours: 0,
+            branchesMap: new Map(),
+          });
+        }
+
+        const projectData = platformData.projectsMap.get(project)!;
+        projectData.hours += duration;
+        if (isDebug) {
+          projectData.debugHours += duration;
+        }
+
+        // Inicializar rama si no existe
+        if (!projectData.branchesMap.has(branch)) {
+          projectData.branchesMap.set(branch, {
+            hours: 0,
+            debugHours: 0,
+          });
+        }
+
+        const branchData = projectData.branchesMap.get(branch)!;
+        branchData.hours += duration;
+        if (isDebug) {
+          branchData.debugHours += duration;
+        }
+      });
+
+      // Convertir a la estructura requerida
+      const byPlatform = Array.from(platformMap.entries()).map(
+        ([platform, platformData]) => {
+          const projects = Array.from(platformData.projectsMap.entries()).map(
+            ([project, projectData]) => {
+              const branches = Array.from(
+                projectData.branchesMap.entries(),
+              ).map(([branch, branchData]) => ({
+                branch,
+                hours: branchData.hours,
+                debug: {
+                  hours: branchData.debugHours,
+                },
+              }));
+
+              return {
+                project,
+                hours: projectData.hours,
+                debug: {
+                  hours: projectData.debugHours,
+                },
+                branches,
+              };
+            },
+          );
+
+          return {
+            platform,
+            machine: platformData.machine,
+            hours: platformData.hours,
+            projects,
+          };
+        },
+      );
+
+      return {
+        totalHours,
+        byLanguage,
+        byPlatform,
+      };
+    } catch (error) {
+      console.error('Error al obtener el resumen diario:', error);
+      throw error;
+    }
   }
 
   async getWeeklySummary(userId: number): Promise<WeeklySummary> {
@@ -137,103 +223,176 @@ export class ReportsService {
     const endOfWeek = new Date(startOfWeek);
     endOfWeek.setDate(startOfWeek.getDate() + 7);
 
-    const activities = await this.activitiesRepository.find({
-      where: {
-        user: { id: userId },
-        startTime: MoreThanOrEqual(this.convertToTimestamp(startOfWeek)),
-        endTime: LessThan(this.convertToTimestamp(endOfWeek)),
-      },
-    });
+    try {
+      const activities = await this.activitiesRepository.find({
+        where: {
+          user: { id: userId },
+          startTime: MoreThanOrEqual(this.convertToTimestamp(startOfWeek)),
+          endTime: LessThan(this.convertToTimestamp(endOfWeek)),
+        },
+      });
 
-    // Calcular horas totales
-    const totalHours = activities.reduce(
-      (sum, activity) => sum + activity.duration,
-      0,
-    );
+      // Calcular horas totales
+      const totalHours = activities.reduce(
+        (sum, activity) => sum + activity.duration,
+        0,
+      );
 
-    // Agrupar por día
-    const dailyMap = new Map<string, number>();
-    for (let i = 0; i < 7; i++) {
-      const date = new Date(startOfWeek);
-      date.setDate(startOfWeek.getDate() + i);
-      const dateString = date.toISOString().split('T')[0];
-      dailyMap.set(dateString, 0);
-    }
-
-    activities.forEach((activity) => {
-      const date = new Date(activity.startTime);
-      const dateString = date.toISOString().split('T')[0];
-      const currentHours = dailyMap.get(dateString) ?? 0;
-      dailyMap.set(dateString, currentHours + activity.duration);
-    });
-
-    const dailyHours = Array.from(dailyMap.entries()).map(([date, hours]) => ({
-      date,
-      hours,
-    }));
-
-    // Agrupar por lenguaje
-    const languageMap = new Map<string, number>();
-    activities.forEach((activity) => {
-      const currentHours = languageMap.get(activity.language) ?? 0;
-      languageMap.set(activity.language, currentHours + activity.duration);
-    });
-
-    const byLanguage = Array.from(languageMap.entries()).map(
-      ([language, hours]) => ({
-        language,
-        hours,
-      }),
-    );
-
-    // Agrupar por proyecto
-    const projectMap = new Map<string, number>();
-    // Map para almacenar las ramas por proyecto
-    const projectBranchesMap = new Map<string, Map<string, number>>();
-
-    activities.forEach((activity) => {
-      const currentHours = projectMap.get(activity.project) ?? 0;
-      projectMap.set(activity.project, currentHours + activity.duration);
-
-      // Agregar información de rama git
-      if (!projectBranchesMap.has(activity.project)) {
-        projectBranchesMap.set(activity.project, new Map<string, number>());
+      // Agrupar por día
+      const dailyMap = new Map<string, number>();
+      for (let i = 0; i < 7; i++) {
+        const date = new Date(startOfWeek);
+        date.setDate(startOfWeek.getDate() + i);
+        const dateString = date.toISOString().split('T')[0];
+        dailyMap.set(dateString, 0);
       }
 
-      const branchName = activity.branch || 'sin-rama';
-      const branchMap = projectBranchesMap.get(activity.project);
-      if (!branchMap) {
-        return;
-      }
-      const currentBranchHours = branchMap.get(branchName) ?? 0;
-      branchMap.set(branchName, currentBranchHours + activity.duration);
-    });
+      activities.forEach((activity) => {
+        const date = new Date(activity.startTime);
+        const dateString = date.toISOString().split('T')[0];
+        const currentHours = dailyMap.get(dateString) ?? 0;
+        dailyMap.set(dateString, currentHours + activity.duration);
+      });
 
-    const byProject = Array.from(projectMap.entries()).map(
-      ([project, hours]) => {
-        const branchMap =
-          projectBranchesMap.get(project) || new Map<string, number>();
-        const branches = Array.from(branchMap.entries()).map(
-          ([branch, branchHours]) => ({
-            branch,
-            hours: branchHours,
-          }),
-        );
-
-        return {
-          project,
+      const dailyHours = Array.from(dailyMap.entries()).map(
+        ([date, hours]) => ({
+          date,
           hours,
-          branches,
-        };
-      },
-    );
+        }),
+      );
 
-    return {
-      totalHours,
-      dailyHours,
-      byLanguage,
-      byProject,
-    };
+      // Agrupar por lenguaje
+      const languageMap = new Map<string, number>();
+      activities.forEach((activity) => {
+        const currentHours = languageMap.get(activity.language) ?? 0;
+        languageMap.set(activity.language, currentHours + activity.duration);
+      });
+
+      const byLanguage = Array.from(languageMap.entries()).map(
+        ([language, hours]) => ({
+          language,
+          hours,
+        }),
+      );
+
+      // Agrupar por plataforma, máquina y proyectos
+      const platformMap = new Map<
+        string,
+        {
+          machine: string;
+          hours: number;
+          projectsMap: Map<
+            string,
+            {
+              hours: number;
+              debugHours: number;
+              branchesMap: Map<
+                string,
+                {
+                  hours: number;
+                  debugHours: number;
+                }
+              >;
+            }
+          >;
+        }
+      >();
+
+      activities.forEach((activity) => {
+        const platform = activity.platform || 'desconocido';
+        const machine = activity.machine || 'desconocida';
+        const project = activity.project;
+        const branch = activity.branch || 'sin-rama';
+        const isDebug = activity.debug || false;
+        const duration = activity.duration;
+
+        // Inicializar plataforma si no existe
+        if (!platformMap.has(platform)) {
+          platformMap.set(platform, {
+            machine,
+            hours: 0,
+            projectsMap: new Map(),
+          });
+        }
+
+        const platformData = platformMap.get(platform)!;
+        platformData.hours += duration;
+
+        // Inicializar proyecto si no existe
+        if (!platformData.projectsMap.has(project)) {
+          platformData.projectsMap.set(project, {
+            hours: 0,
+            debugHours: 0,
+            branchesMap: new Map(),
+          });
+        }
+
+        const projectData = platformData.projectsMap.get(project)!;
+        projectData.hours += duration;
+        if (isDebug) {
+          projectData.debugHours += duration;
+        }
+
+        // Inicializar rama si no existe
+        if (!projectData.branchesMap.has(branch)) {
+          projectData.branchesMap.set(branch, {
+            hours: 0,
+            debugHours: 0,
+          });
+        }
+
+        const branchData = projectData.branchesMap.get(branch)!;
+        branchData.hours += duration;
+        if (isDebug) {
+          branchData.debugHours += duration;
+        }
+      });
+
+      // Convertir a la estructura requerida
+      const byPlatform = Array.from(platformMap.entries()).map(
+        ([platform, platformData]) => {
+          const projects = Array.from(platformData.projectsMap.entries()).map(
+            ([project, projectData]) => {
+              const branches = Array.from(
+                projectData.branchesMap.entries(),
+              ).map(([branch, branchData]) => ({
+                branch,
+                hours: branchData.hours,
+                debug: {
+                  hours: branchData.debugHours,
+                },
+              }));
+
+              return {
+                project,
+                hours: projectData.hours,
+                debug: {
+                  hours: projectData.debugHours,
+                },
+                branches,
+              };
+            },
+          );
+
+          return {
+            platform,
+            machine: platformData.machine,
+            hours: platformData.hours,
+            projects,
+          };
+        },
+      );
+
+      return {
+        totalHours,
+        dailyHours,
+        byLanguage,
+        byPlatform,
+      };
+    } catch (error) {
+      console.error('Error al obtener el resumen semanal:', error);
+      throw error;
+    }
   }
 
   private convertToTimestamp(date: Date): number {
