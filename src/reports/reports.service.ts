@@ -8,9 +8,15 @@ export interface LanguageSummary {
   hours: number;
 }
 
+export interface BranchSummary {
+  branch: string;
+  hours: number;
+}
+
 export interface ProjectSummary {
   project: string;
   hours: number;
+  branches: BranchSummary[];
 }
 
 export interface DailySummary {
@@ -74,16 +80,44 @@ export class ReportsService {
 
     // Agrupar por proyecto
     const projectMap = new Map<string, number>();
+    // Map para almacenar las ramas por proyecto
+    const projectBranchesMap = new Map<string, Map<string, number>>();
+
     activities.forEach((activity) => {
       const currentHours = projectMap.get(activity.project) ?? 0;
       projectMap.set(activity.project, currentHours + activity.duration);
+
+      // Agregar información de rama git
+      if (!projectBranchesMap.has(activity.project)) {
+        projectBranchesMap.set(activity.project, new Map<string, number>());
+      }
+
+      const branchName = activity.gitBranch || 'sin-rama';
+      const branchMap = projectBranchesMap.get(activity.project);
+      if (!branchMap) {
+        return;
+      }
+      const currentBranchHours = branchMap.get(branchName) ?? 0;
+      branchMap.set(branchName, currentBranchHours + activity.duration);
     });
 
     const byProject = Array.from(projectMap.entries()).map(
-      ([project, hours]) => ({
-        project,
-        hours,
-      }),
+      ([project, hours]) => {
+        const branchMap =
+          projectBranchesMap.get(project) || new Map<string, number>();
+        const branches = Array.from(branchMap.entries()).map(
+          ([branch, branchHours]) => ({
+            branch,
+            hours: branchHours,
+          }),
+        );
+
+        return {
+          project,
+          hours,
+          branches,
+        };
+      },
     );
 
     return {
@@ -154,16 +188,44 @@ export class ReportsService {
 
     // Agrupar por proyecto
     const projectMap = new Map<string, number>();
+    // Map para almacenar las ramas por proyecto
+    const projectBranchesMap = new Map<string, Map<string, number>>();
+
     activities.forEach((activity) => {
       const currentHours = projectMap.get(activity.project) ?? 0;
       projectMap.set(activity.project, currentHours + activity.duration);
+
+      // Agregar información de rama git
+      if (!projectBranchesMap.has(activity.project)) {
+        projectBranchesMap.set(activity.project, new Map<string, number>());
+      }
+
+      const branchName = activity.gitBranch || 'sin-rama';
+      const branchMap = projectBranchesMap.get(activity.project);
+      if (!branchMap) {
+        return;
+      }
+      const currentBranchHours = branchMap.get(branchName) ?? 0;
+      branchMap.set(branchName, currentBranchHours + activity.duration);
     });
 
     const byProject = Array.from(projectMap.entries()).map(
-      ([project, hours]) => ({
-        project,
-        hours,
-      }),
+      ([project, hours]) => {
+        const branchMap =
+          projectBranchesMap.get(project) || new Map<string, number>();
+        const branches = Array.from(branchMap.entries()).map(
+          ([branch, branchHours]) => ({
+            branch,
+            hours: branchHours,
+          }),
+        );
+
+        return {
+          project,
+          hours,
+          branches,
+        };
+      },
     );
 
     return {

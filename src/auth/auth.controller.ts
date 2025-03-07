@@ -1,11 +1,4 @@
-import {
-  Body,
-  Controller,
-  Get,
-  Post,
-  Request,
-  UseGuards,
-} from '@nestjs/common';
+import { Body, Controller, Post, Request, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { Request as RequestExpress } from 'express';
 import { AuthService } from './auth.service';
@@ -29,16 +22,6 @@ export class AuthController {
       return { success: false, message: 'Credenciales inválidas' };
     }
     return { success: true, ...result };
-  }
-
-  @UseGuards(AuthGuard('jwt'))
-  @Get('profile')
-  getProfile(@Request() req: RequestExpress) {
-    if (!req.user) {
-      return { success: false, message: 'Usuario no autenticado' };
-    }
-    // const { password, ...result } = req.user;
-    return req.user;
   }
 
   @UseGuards(AuthGuard('jwt'))
