@@ -1,16 +1,25 @@
-import { IsBoolean, IsNotEmpty, IsNumber, IsString } from 'class-validator';
+import {
+  IsBoolean,
+  IsNotEmpty,
+  IsNumber,
+  IsString,
+  MinLength,
+} from 'class-validator';
 
 export class CreateActivityDto {
   @IsString()
   @IsNotEmpty()
+  @MinLength(2)
   project: string;
 
   @IsString()
   @IsNotEmpty()
+  @MinLength(3)
   file: string;
 
   @IsString()
   @IsNotEmpty()
+  @MinLength(1)
   language: string;
 
   @IsNumber()
