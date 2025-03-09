@@ -4,22 +4,22 @@ import { LessThan, MoreThanOrEqual, Repository } from 'typeorm';
 import { Activity } from '../activity/entities/activity.entity';
 
 export interface DebugSummary {
-  hours: number;
+  durationInSeconds: number;
 }
 
 export interface LanguageSummary {
   language: string;
-  hours: number;
+  durationInSeconds: number;
 }
 
 export interface BranchSummary {
   branch: string;
-  hours: number;
+  durationInSeconds: number;
   debug: DebugSummary;
 }
 
 export interface DailySummary {
-  totalHours: number;
+  totalDurationInSeconds: number;
   byLanguage: LanguageSummary[];
   byPlatform: PlatformSummary[];
 }
@@ -27,25 +27,25 @@ export interface DailySummary {
 export interface PlatformSummary {
   platform: string;
   machine: string;
-  hours: number;
+  durationInSeconds: number;
   projects: ProjectSummary[];
 }
 
 export interface ProjectSummary {
   project: string;
-  hours: number;
+  durationInSeconds: number;
   debug: DebugSummary;
   branches: BranchSummary[];
 }
 
-export interface DailyHoursSummary {
+export interface DailyDurationSummary {
   date: string;
-  hours: number;
+  durationInSeconds: number;
 }
 
 export interface WeeklySummary {
-  totalHours: number;
-  dailyHours: DailyHoursSummary[];
+  totalDurationInSeconds: number;
+  dailyDurationInSeconds: DailyDurationSummary[];
   byLanguage: LanguageSummary[];
   byPlatform: PlatformSummary[];
 }
@@ -75,7 +75,7 @@ export class ReportsService {
       });
 
       // Calcular horas totales
-      const totalHours = activities.reduce(
+      const totalDurationInSeconds = activities.reduce(
         (sum, activity) => sum + activity.duration,
         0,
       );
@@ -83,14 +83,18 @@ export class ReportsService {
       // Agrupar por lenguaje
       const languageMap = new Map<string, number>();
       activities.forEach((activity) => {
-        const currentHours = languageMap.get(activity.language) ?? 0;
-        languageMap.set(activity.language, currentHours + activity.duration);
+        const currentDurationInSeconds =
+          languageMap.get(activity.language) ?? 0;
+        languageMap.set(
+          activity.language,
+          currentDurationInSeconds + activity.duration,
+        );
       });
 
       const byLanguage = Array.from(languageMap.entries()).map(
-        ([language, hours]) => ({
+        ([language, durationInSeconds]) => ({
           language,
-          hours,
+          durationInSeconds,
         }),
       );
 
@@ -99,17 +103,17 @@ export class ReportsService {
         string,
         {
           machine: string;
-          hours: number;
+          durationInSeconds: number;
           projectsMap: Map<
             string,
             {
-              hours: number;
-              debugHours: number;
+              durationInSeconds: number;
+              debugDurationInSeconds: number;
               branchesMap: Map<
                 string,
                 {
-                  hours: number;
-                  debugHours: number;
+                  durationInSeconds: number;
+                  debugDurationInSeconds: number;
                 }
               >;
             }
@@ -129,41 +133,41 @@ export class ReportsService {
         if (!platformMap.has(platform)) {
           platformMap.set(platform, {
             machine,
-            hours: 0,
+            durationInSeconds: 0,
             projectsMap: new Map(),
           });
         }
 
         const platformData = platformMap.get(platform)!;
-        platformData.hours += duration;
+        platformData.durationInSeconds += duration;
 
         // Inicializar proyecto si no existe
         if (!platformData.projectsMap.has(project)) {
           platformData.projectsMap.set(project, {
-            hours: 0,
-            debugHours: 0,
+            durationInSeconds: 0,
+            debugDurationInSeconds: 0,
             branchesMap: new Map(),
           });
         }
 
         const projectData = platformData.projectsMap.get(project)!;
-        projectData.hours += duration;
+        projectData.durationInSeconds += duration;
         if (isDebug) {
-          projectData.debugHours += duration;
+          projectData.debugDurationInSeconds += duration;
         }
 
         // Inicializar rama si no existe
         if (!projectData.branchesMap.has(branch)) {
           projectData.branchesMap.set(branch, {
-            hours: 0,
-            debugHours: 0,
+            durationInSeconds: 0,
+            debugDurationInSeconds: 0,
           });
         }
 
         const branchData = projectData.branchesMap.get(branch)!;
-        branchData.hours += duration;
+        branchData.durationInSeconds += duration;
         if (isDebug) {
-          branchData.debugHours += duration;
+          branchData.debugDurationInSeconds += duration;
         }
       });
 
@@ -176,17 +180,17 @@ export class ReportsService {
                 projectData.branchesMap.entries(),
               ).map(([branch, branchData]) => ({
                 branch,
-                hours: branchData.hours,
+                durationInSeconds: branchData.durationInSeconds,
                 debug: {
-                  hours: branchData.debugHours,
+                  durationInSeconds: branchData.debugDurationInSeconds,
                 },
               }));
 
               return {
                 project,
-                hours: projectData.hours,
+                durationInSeconds: projectData.durationInSeconds,
                 debug: {
-                  hours: projectData.debugHours,
+                  durationInSeconds: projectData.debugDurationInSeconds,
                 },
                 branches,
               };
@@ -196,14 +200,14 @@ export class ReportsService {
           return {
             platform,
             machine: platformData.machine,
-            hours: platformData.hours,
+            durationInSeconds: platformData.durationInSeconds,
             projects,
           };
         },
       );
 
       return {
-        totalHours,
+        totalDurationInSeconds: totalDurationInSeconds,
         byLanguage,
         byPlatform,
       };
@@ -233,7 +237,7 @@ export class ReportsService {
       });
 
       // Calcular horas totales
-      const totalHours = activities.reduce(
+      const totalDurationInSeconds = activities.reduce(
         (sum, activity) => sum + activity.duration,
         0,
       );
@@ -250,28 +254,32 @@ export class ReportsService {
       activities.forEach((activity) => {
         const date = new Date(activity.startTime);
         const dateString = date.toISOString().split('T')[0];
-        const currentHours = dailyMap.get(dateString) ?? 0;
-        dailyMap.set(dateString, currentHours + activity.duration);
+        const currentDurationInSeconds = dailyMap.get(dateString) ?? 0;
+        dailyMap.set(dateString, currentDurationInSeconds + activity.duration);
       });
 
-      const dailyHours = Array.from(dailyMap.entries()).map(
-        ([date, hours]) => ({
+      const dailyDurationInSeconds = Array.from(dailyMap.entries()).map(
+        ([date, durationInSeconds]) => ({
           date,
-          hours,
+          durationInSeconds,
         }),
       );
 
       // Agrupar por lenguaje
       const languageMap = new Map<string, number>();
       activities.forEach((activity) => {
-        const currentHours = languageMap.get(activity.language) ?? 0;
-        languageMap.set(activity.language, currentHours + activity.duration);
+        const currentDurationInSeconds =
+          languageMap.get(activity.language) ?? 0;
+        languageMap.set(
+          activity.language,
+          currentDurationInSeconds + activity.duration,
+        );
       });
 
       const byLanguage = Array.from(languageMap.entries()).map(
-        ([language, hours]) => ({
+        ([language, durationInSeconds]) => ({
           language,
-          hours,
+          durationInSeconds,
         }),
       );
 
@@ -280,17 +288,17 @@ export class ReportsService {
         string,
         {
           machine: string;
-          hours: number;
+          durationInSeconds: number;
           projectsMap: Map<
             string,
             {
-              hours: number;
-              debugHours: number;
+              durationInSeconds: number;
+              debugDurationInSeconds: number;
               branchesMap: Map<
                 string,
                 {
-                  hours: number;
-                  debugHours: number;
+                  durationInSeconds: number;
+                  debugDurationInSeconds: number;
                 }
               >;
             }
@@ -310,41 +318,41 @@ export class ReportsService {
         if (!platformMap.has(platform)) {
           platformMap.set(platform, {
             machine,
-            hours: 0,
+            durationInSeconds: 0,
             projectsMap: new Map(),
           });
         }
 
         const platformData = platformMap.get(platform)!;
-        platformData.hours += duration;
+        platformData.durationInSeconds += duration;
 
         // Inicializar proyecto si no existe
         if (!platformData.projectsMap.has(project)) {
           platformData.projectsMap.set(project, {
-            hours: 0,
-            debugHours: 0,
+            durationInSeconds: 0,
+            debugDurationInSeconds: 0,
             branchesMap: new Map(),
           });
         }
 
         const projectData = platformData.projectsMap.get(project)!;
-        projectData.hours += duration;
+        projectData.durationInSeconds += duration;
         if (isDebug) {
-          projectData.debugHours += duration;
+          projectData.debugDurationInSeconds += duration;
         }
 
         // Inicializar rama si no existe
         if (!projectData.branchesMap.has(branch)) {
           projectData.branchesMap.set(branch, {
-            hours: 0,
-            debugHours: 0,
+            durationInSeconds: 0,
+            debugDurationInSeconds: 0,
           });
         }
 
         const branchData = projectData.branchesMap.get(branch)!;
-        branchData.hours += duration;
+        branchData.durationInSeconds += duration;
         if (isDebug) {
-          branchData.debugHours += duration;
+          branchData.debugDurationInSeconds += duration;
         }
       });
 
@@ -357,17 +365,17 @@ export class ReportsService {
                 projectData.branchesMap.entries(),
               ).map(([branch, branchData]) => ({
                 branch,
-                hours: branchData.hours,
+                durationInSeconds: branchData.durationInSeconds,
                 debug: {
-                  hours: branchData.debugHours,
+                  durationInSeconds: branchData.debugDurationInSeconds,
                 },
               }));
 
               return {
                 project,
-                hours: projectData.hours,
+                durationInSeconds: projectData.durationInSeconds,
                 debug: {
-                  hours: projectData.debugHours,
+                  durationInSeconds: projectData.debugDurationInSeconds,
                 },
                 branches,
               };
@@ -377,15 +385,15 @@ export class ReportsService {
           return {
             platform,
             machine: platformData.machine,
-            hours: platformData.hours,
+            durationInSeconds: platformData.durationInSeconds,
             projects,
           };
         },
       );
 
       return {
-        totalHours,
-        dailyHours,
+        totalDurationInSeconds: totalDurationInSeconds,
+        dailyDurationInSeconds: dailyDurationInSeconds,
         byLanguage,
         byPlatform,
       };
