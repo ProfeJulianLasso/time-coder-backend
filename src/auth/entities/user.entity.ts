@@ -1,18 +1,15 @@
-import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, Entity, OneToMany, PrimaryColumn } from 'typeorm';
 import { Activity } from '../../activity/entities/activity.entity';
 
-@Entity()
+@Entity({ name: 'users' })
 export class User {
-  @PrimaryGeneratedColumn()
-  id: number;
+  @PrimaryColumn({ type: 'varchar', length: 26 })
+  id: string;
 
   @Column({ unique: true })
   username: string;
 
-  @Column()
-  password: string;
-
-  @Column({ unique: true })
+  @Column({ unique: true, name: 'api_key' })
   apiKey: string;
 
   @OneToMany(() => Activity, (activity) => activity.user)
