@@ -57,7 +57,7 @@ export class ReportsService {
     private readonly activitiesRepository: Repository<Activity>,
   ) {}
 
-  async getDailySummary(userId: number): Promise<DailySummary> {
+  async getDailySummary(userId: string): Promise<DailySummary> {
     // Obtener actividades del día actual
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -217,7 +217,7 @@ export class ReportsService {
     }
   }
 
-  async getWeeklySummary(userId: number): Promise<WeeklySummary> {
+  async getWeeklySummary(userId: string): Promise<WeeklySummary> {
     // Obtener fecha de inicio de la semana (domingo)
     const today = new Date();
     const startOfWeek = new Date(today);

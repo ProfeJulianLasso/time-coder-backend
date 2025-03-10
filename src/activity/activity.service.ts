@@ -45,7 +45,7 @@ export class ActivityService {
     return activity;
   }
 
-  async findAll(userId: number): Promise<Activity[]> {
+  async findAll(userId: string): Promise<Activity[]> {
     return this.activityRepository.find({
       where: { user: { id: userId } },
       order: { startTime: 'DESC' },
@@ -53,7 +53,7 @@ export class ActivityService {
   }
 
   async findByDateRange(
-    userId: number,
+    userId: string,
     startDate: Date,
     endDate: Date,
   ): Promise<Activity[]> {

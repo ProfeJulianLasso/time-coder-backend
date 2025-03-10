@@ -6,6 +6,12 @@ export class User {
   @PrimaryColumn({ type: 'varchar' })
   id: string;
 
+  @Column({ type: 'varchar' })
+  name: string;
+
+  @Column({ unique: true })
+  email: string;
+
   @Column({ unique: true, name: 'api_key' })
   apiKey: string;
 

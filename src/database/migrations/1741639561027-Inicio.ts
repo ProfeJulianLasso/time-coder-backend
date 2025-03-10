@@ -1,7 +1,7 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class Inicio1741628601028 implements MigrationInterface {
-  name = 'Inicio1741628601028';
+export class Inicio1741639561027 implements MigrationInterface {
+  name = 'Inicio1741639561027';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(
@@ -32,7 +32,7 @@ export class Inicio1741628601028 implements MigrationInterface {
       `CREATE INDEX "activities_platform_index" ON "activities" ("platform") `,
     );
     await queryRunner.query(
-      `CREATE TABLE "users" ("id" character varying(26) NOT NULL, "username" character varying NOT NULL, "api_key" character varying NOT NULL, CONSTRAINT "UQ_fe0bb3f6520ee0469504521e710" UNIQUE ("username"), CONSTRAINT "UQ_16bfa631de67a4fafe7ce3f2fed" UNIQUE ("api_key"), CONSTRAINT "PK_a3ffb1c0c8416b9fc6f907b7433" PRIMARY KEY ("id"))`,
+      `CREATE TABLE "users" ("id" character varying NOT NULL, "name" character varying NOT NULL, "email" character varying NOT NULL, "api_key" character varying NOT NULL, CONSTRAINT "UQ_97672ac88f789774dd47f7c8be3" UNIQUE ("email"), CONSTRAINT "UQ_16bfa631de67a4fafe7ce3f2fed" UNIQUE ("api_key"), CONSTRAINT "PK_a3ffb1c0c8416b9fc6f907b7433" PRIMARY KEY ("id"))`,
     );
     await queryRunner.query(
       `ALTER TABLE "activities" ADD CONSTRAINT "FK_b82f1d8368dd5305ae7e7e664c2" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,

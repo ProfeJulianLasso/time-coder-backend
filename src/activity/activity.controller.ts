@@ -1,7 +1,6 @@
 import {
   Body,
   Controller,
-  Get,
   Post,
   Request,
   UnauthorizedException,
@@ -44,14 +43,5 @@ export class ActivityController {
       );
       return { success: true, activity };
     }
-  }
-
-  @UseGuards(AuthGuard('jwt'))
-  @Get()
-  findAll(@Request() req: RequestExpress) {
-    if (!req.user) {
-      throw new UnauthorizedException('Usuario no autenticado');
-    }
-    return this.activityService.findAll((req.user as User).id);
   }
 }

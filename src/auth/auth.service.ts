@@ -1,88 +1,83 @@
-import { ConflictException, Injectable } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
+import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
-import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
+import { OAuth2Client } from 'google-auth-library';
 import { Repository } from 'typeorm';
-import { CreateUserDto } from './dto/create-user.dto';
-import { LoginUserDto } from './dto/login-user.dto';
+import GoogleJwtPayload from '../interfaces/google-jwt-payload.interface';
 import { User } from './entities/user.entity';
 
 @Injectable()
 export class AuthService {
+  private readonly googleClient: OAuth2Client;
+
   constructor(
     @InjectRepository(User)
     private readonly usersRepository: Repository<User>,
-    private readonly jwtService: JwtService,
-  ) {}
-
-  async register(createUserDto: CreateUserDto): Promise<{
-    username: string;
-    apiKey: string;
-  }> {
-    const { username, password } = createUserDto;
-
-    // Verificar si el usuario ya existe
-    const userExists = await this.usersRepository.findOne({
-      where: { username },
-    });
-    if (userExists) {
-      throw new ConflictException('El nombre de usuario ya está en uso');
-    }
-
-    // Generar API key
-    const apiKey = crypto.randomBytes(32).toString('hex');
-
-    // Crear nuevo usuario
-    const user = new User();
-    user.username = username;
-    user.password = await bcrypt.hash(password, 10);
-    user.apiKey = apiKey;
-
-    await this.usersRepository.save(user);
-
-    return {
-      username: user.username,
-      apiKey: user.apiKey,
-    };
-  }
-
-  async login(loginUserDto: LoginUserDto): Promise<{
-    access_token: string;
-    apiKey: string;
-  } | null> {
-    const { username, password } = loginUserDto;
-    const user = await this.usersRepository.findOne({ where: { username } });
-
-    if (!user || !(await bcrypt.compare(password, user.password))) {
-      return null;
-    }
-
-    const payload = { username: user.username, sub: user.id };
-    return {
-      access_token: this.jwtService.sign(payload),
-      apiKey: user.apiKey,
-    };
-  }
-
-  async validateUser(username: string): Promise<User | null> {
-    return this.usersRepository.findOne({ where: { username } });
+    private readonly configService: ConfigService,
+  ) {
+    this.googleClient = new OAuth2Client(
+      this.configService.get<string>('GOOGLE_CLIENT_ID'),
+    );
   }
 
   async validateApiKey(apiKey: string): Promise<User | null> {
     return this.usersRepository.findOne({ where: { apiKey } });
   }
 
-  async regenerateApiKey(userId: number): Promise<string | null> {
-    const user = await this.usersRepository.findOne({ where: { id: userId } });
-    if (!user) {
-      return null;
+  async validateGoogleToken(
+    token: string,
+  ): Promise<{ success: string | boolean }> {
+    try {
+      // Verificar el token con Google
+      const ticket = await this.googleClient.verifyIdToken({
+        idToken: token,
+        audience: this.configService.get<string>('GOOGLE_CLIENT_ID'),
+      });
+
+      // Obtener la carga útil del token
+      const payload = ticket.getPayload() as GoogleJwtPayload;
+
+      // Verificar que el correo esté confirmado
+      if (!payload.email_verified) {
+        return { success: false };
+      }
+
+      // Verificar que el dominio del correo sea el correcto
+      const allowedDomain = this.configService.get<string>(
+        'GOOGLE_ALLOWED_DOMAIN',
+      );
+      if (payload.hd !== allowedDomain) {
+        return { success: false };
+      }
+
+      // Buscar si el usuario ya existe
+      const user = await this.usersRepository.findOne({
+        where: { id: payload.sub },
+      });
+
+      // Si el usuario existe, devolver éxito
+      if (user) {
+        return { success: true };
+      }
+
+      // Registrar al nuevo usuario
+      const newUser = new User();
+      newUser.id = payload.sub;
+      newUser.name = payload.name;
+      newUser.email = payload.email;
+      newUser.apiKey = crypto.randomBytes(32).toString('hex');
+
+      try {
+        await this.usersRepository.save(newUser);
+        return { success: newUser.apiKey };
+      } catch (error) {
+        console.error('Error al guardar el usuario:', error);
+        return { success: false };
+      }
+    } catch (error) {
+      console.error('Error al validar token de Google:', error);
+      return { success: false };
     }
-
-    const newApiKey = crypto.randomBytes(32).toString('hex');
-    user.apiKey = newApiKey;
-    await this.usersRepository.save(user);
-
-    return newApiKey;
   }
 }
