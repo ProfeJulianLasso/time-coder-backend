@@ -3,11 +3,8 @@ import { Activity } from '../../activity/entities/activity.entity';
 
 @Entity({ name: 'users' })
 export class User {
-  @PrimaryColumn({ type: 'varchar', length: 26 })
+  @PrimaryColumn({ type: 'varchar' })
   id: string;
-
-  @Column({ unique: true })
-  username: string;
 
   @Column({ unique: true, name: 'api_key' })
   apiKey: string;
