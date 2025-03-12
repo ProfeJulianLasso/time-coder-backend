@@ -2,8 +2,10 @@
   "cSpell.words": [
     "ABCDEFGHJKMNPQRSTVWXYZ",
     "apikey",
+    "classpath",
     "Crockford",
     "devtimer",
+    "dotenv",
     "Dtos",
     "edinf",
     "googleusercontent",
@@ -11,6 +13,7 @@
     "jbuk",
     "kbga",
     "milisegundos",
+    "pids",
     "postgres",
     "sqlite",
     "timecoder",
