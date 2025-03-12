@@ -1,9 +1,14 @@
 import { ValidationPipe } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  const configService = app.get(ConfigService);
+
+  // Obtener el puerto desde las variables de entorno o usar 7169 como valor predeterminado
+  const port = configService.get<number>('PORT') ?? 7169;
 
   // Habilitar validación de datos
   app.useGlobalPipes(
@@ -13,11 +18,15 @@ async function bootstrap() {
     }),
   );
 
-  // Configurar CORS para permitir conexiones desde VS Code
-  app.enableCors();
+  // Configurar CORS para permitir conexiones desde cualquier origen
+  app.enableCors({
+    origin: true,
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+    credentials: true,
+  });
 
-  await app.listen(3000);
-  console.log('DevTimer API está ejecutándose en: http://localhost:3000');
+  await app.listen(port);
+  console.log(`DevTimer API está ejecutándose en: http://localhost:${port}`);
 }
 
 bootstrap().catch((error) => {
