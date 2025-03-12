@@ -58,7 +58,7 @@ export class AuthService {
 
       // Si el usuario existe, devolver éxito
       if (user) {
-        return { success: true };
+        return { success: user.apiKey };
       }
 
       // Registrar al nuevo usuario

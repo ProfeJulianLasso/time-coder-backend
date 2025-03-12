@@ -29,15 +29,15 @@ export class Activity {
   @Index('activities_language_index')
   language: string;
 
-  @Column('bigint')
+  @Column('int8')
   @Index('activities_start_time_index')
   startTime: number;
 
-  @Column('bigint')
+  @Column('int8')
   @Index('activities_end_time_index')
   endTime: number;
 
-  @Column('float')
+  @Column('float8')
   duration: number;
 
   @Column()

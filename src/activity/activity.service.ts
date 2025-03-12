@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { ULID } from 'src/utils/ulid.class';
 import { Repository } from 'typeorm';
 import { User } from '../auth/entities/user.entity';
 import { CreateActivityDto } from './dto/create-activity.dto';
@@ -29,6 +30,7 @@ export class ActivityService {
     user: User,
   ): Activity {
     const activity = this.activityRepository.create({
+      id: ULID.generate().getValue(),
       project: createActivityDto.project,
       file: createActivityDto.file,
       language: createActivityDto.language,

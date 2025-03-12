@@ -252,7 +252,7 @@ export class ReportsService {
       }
 
       activities.forEach((activity) => {
-        const date = new Date(activity.startTime);
+        const date = new Date(Number(activity.startTime));
         const dateString = date.toISOString().split('T')[0];
         const currentDurationInSeconds = dailyMap.get(dateString) ?? 0;
         dailyMap.set(dateString, currentDurationInSeconds + activity.duration);
