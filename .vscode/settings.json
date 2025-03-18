@@ -1,22 +1,9 @@
 {
-  "cSpell.words": [
-    "ABCDEFGHJKMNPQRSTVWXYZ",
-    "apikey",
-    "classpath",
-    "Crockford",
-    "devtimer",
-    "dotenv",
-    "Dtos",
-    "edinf",
-    "googleusercontent",
-    "ILOU",
-    "jbuk",
-    "kbga",
-    "milisegundos",
-    "pids",
-    "postgres",
-    "sqlite",
-    "timecoder",
-    "vkagep"
+  "cSpell.language": "en,es",
+  "cSpell.ignorePaths": [
+    ".vscode",
+    "go.sum",
+    "go.mod",
+    ".gitignore",
   ]
 }
